@@ -46,14 +46,16 @@ Y['diagnostic_superclass'] = Y.scp_codes.apply(aggregate_diagnostic)
 Y['class'] = Y['diagnostic_superclass'].str[0] # Flatten lists
 class_counts = Y['class'].value_counts()
 
+
 # Filter out unrealistic age counts
 Y = Y[(Y['age'] > 0) & (Y['age'] < 110)]
 avg_age = Y.groupby('class')['age'].mean()
 std_age = Y.groupby('class')['age'].std()
 
 
-#
-Y['class'] = Y['diagnostic_superclass'].str[0]
+# Breakdown by heart_axis
+counts = Y.groupby(['class', 'heart_axis']).size().unstack(fill_value=0)
+
 
 # Split data into train and test
 test_fold = 10
