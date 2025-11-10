@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import wfdb
 import ast
-import os
+
 
 def load_raw_data(df, sampling_rate, path):
     if sampling_rate == 100:
@@ -12,20 +12,6 @@ def load_raw_data(df, sampling_rate, path):
     data = np.array([signal for signal, meta in data])
     return data
 
-path = "/Users/leelasrinivasan/Documents/GitHub/lab4/data"
-sampling_rate=100
-
-# load and converlst annotation data
-Y = pd.read_csv(path+'ptbxl_database.csv', index_col='ecg_id')
-Y.scp_codes = Y.scp_codes.apply(lambda x: ast.literal_eval(x))
-
-# Load raw signal data
-X = load_raw_data(Y, sampling_rate, path)
-
-# Load scp_statements.csv for diagnostic aggregation
-agg_df = pd.read_csv(path+'scp_statements.csv', index_col=0)
-agg_df = agg_df[agg_df.diagnostic == 1]
-
 def aggregate_diagnostic(y_dic):
     tmp = []
     for key in y_dic.keys():
@@ -33,14 +19,45 @@ def aggregate_diagnostic(y_dic):
             tmp.append(agg_df.loc[key].diagnostic_class)
     return list(set(tmp))
 
+# Initialization
+local_path = "/Users/leelasrinivasan/Desktop/SignalLab/lab4_files/data/"
+sampling_rate=100
+
+
+# Load and converlst annotation data
+Y = pd.read_csv(local_path+'ptbxl_database.csv', index_col='ecg_id')
+Y.scp_codes = Y.scp_codes.apply(lambda x: ast.literal_eval(x))
+
+
+# Load raw signal data
+X = load_raw_data(Y, sampling_rate, local_path)
+
+
+# Load scp_statements.csv for diagnostic aggregation
+agg_df = pd.read_csv(local_path+'scp_statements.csv', index_col=0)
+agg_df = agg_df[agg_df.diagnostic == 1]
+
+
 # Apply diagnostic superclass
 Y['diagnostic_superclass'] = Y.scp_codes.apply(aggregate_diagnostic)
 
+
+# Run stats on data
+Y['class'] = Y['diagnostic_superclass'].str[0] # Flatten lists
+class_counts = Y['class'].value_counts()
+
+# Filter out unrealistic age counts
+Y = Y[(Y['age'] > 0) & (Y['age'] < 110)]
+avg_age = Y.groupby('class')['age'].mean()
+std_age = Y.groupby('class')['age'].std()
+
+
+#
+Y['class'] = Y['diagnostic_superclass'].str[0]
+
 # Split data into train and test
 test_fold = 10
-# Train
 X_train = X[np.where(Y.strat_fold != test_fold)]
 y_train = Y[(Y.strat_fold != test_fold)].diagnostic_superclass
-# Test
 X_test = X[np.where(Y.strat_fold == test_fold)]
 y_test = Y[Y.strat_fold == test_fold].diagnostic_superclass
